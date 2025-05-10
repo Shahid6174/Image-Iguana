@@ -7,12 +7,120 @@
     <title>ImageIguana - Edit your images online</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+    <style>
+        /* Light mode (default) */
+        body {
+            background-color: #f8f9fa;
+            /* Light gray background */
+            color: #212529;
+            /* Dark text */
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            background-color: #212529;
+            /* Dark background */
+            color: #f8f9fa;
+            /* Light text */
+        }
+
+        /* Dark mode for Bootstrap components (adjust as needed) */
+        /* Navbar is already dark using data-bs-theme="dark", but you might want to ensure consistency */
+        body.dark-mode .card {
+            /* Example: Style cards in dark mode */
+            background-color: #343a40;
+            border-color: #495057;
+            color: #f8f9fa;
+        }
+
+        body.dark-mode .list-group-item {
+            /* Example for list items */
+            background-color: #343a40;
+            border-color: #495057;
+            color: #f8f9fa;
+        }
+
+        body.dark-mode .form-control,
+        body.dark-mode .form-select {
+            background-color: #495057;
+            color: #f8f9fa;
+            border-color: #6c757d;
+        }
+
+        body.dark-mode .form-control::placeholder {
+            color: #adb5bd;
+        }
+
+        body.dark-mode .form-floating>label {
+            color: #adb5bd;
+        }
+
+
+        /* Style for content divs that currently have explicit white background */
+        /* You'll need to adjust specific elements on your pages if they have inline white backgrounds */
+        body.dark-mode .content-bg-light {
+            background-color: #2a2e33 !important;
+            /* A slightly lighter dark for content areas */
+            color: #f8f9fa;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            /* Adjust shadow for dark mode */
+        }
+
+        body.dark-mode .text-dark {
+            /* Ensure text explicitly set to dark becomes light */
+            color: #f8f9fa !important;
+        }
+
+        body.dark-mode .text-muted {
+            color: #adb5bd !important;
+        }
+
+        body.dark-mode h1,
+        body.dark-mode h2,
+        body.dark-mode h3,
+        body.dark-mode h4,
+        body.dark-mode h5,
+        body.dark-mode h6 {
+            color: #f8f9fa;
+            /* Headings in dark mode */
+        }
+
+        /* Make sure links in dark mode are visible */
+        body.dark-mode a {
+            color: #6cb2eb;
+            /* A lighter blue for links in dark mode */
+        }
+
+        body.dark-mode a:hover {
+            color: #8dc9f0;
+        }
+
+        /* Specific overrides for ImageIguana theme if needed */
+        body.dark-mode h1[style*="color: #4CAF50;"],
+        body.dark-mode h2[style*="color: #4CAF50;"] {
+            color: #66bb6a !important;
+            /* Lighter green for dark mode */
+        }
+
+        /* Navbar button for dark mode toggle */
+        .btn-dark-mode-toggle {
+            color: white;
+            /* Ensure icon/text is visible on dark navbar */
+        }
+
+        .btn-dark-mode-toggle:hover {
+            color: #c1c1c1;
+        }
+    </style>
 </head>
 
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-body" data-bs-theme="dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/"><img src="{{ url_for('static', filename='images/logo.png') }}" alt="ImageIguana Logo" height="50"></a>
+            <a class="navbar-brand" href="/"><img src="{{ url_for('static', filename='images/logo.png') }}"
+                    alt="ImageIguana Logo" height="50"></a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
                 data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
                 aria-label="Toggle navigation">
@@ -29,11 +137,28 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/usage">Usage</a>
                     </li>
+                     <li class="nav-item">
+                        <a class="nav-link" href="/gallery">Gallery</a> {# Added link to Gallery #}
+                    </li>
                 </ul>
-                <form class="d-flex" role="search">
-                    <button class="btn btn-outline-success mx-2" type="submit" style="color: white;">Login</button>
-                    <button class="btn btn-outline-success mx-2" type="submit" style="color: white;">Sign-up</button>
-                </form>
+                <div class="d-flex align-items-center">
+                    {# Dark Mode Toggle Button #}
+                    <button id="darkModeToggle" class="btn btn-dark-mode-toggle me-2" type="button"
+                        aria-label="Toggle dark mode">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-moon-stars-fill" viewBox="0 0 16 16">
+                            <path
+                                d="M6 .278a.77.77 0 0 1 .08.858 7.2 7.2 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277q.792-.001 1.533-.16a.79.79 0 0 1 .81.316.73.73 0 0 1-.031.893A8.35 8.35 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.75.75 0 0 1 6 .278" />
+                            <path
+                                d="M10.794 3.148a.217.217 0 0 1 .412 0l.387 1.162c.173.518.579.924 1.097 1.097l1.162.387a.217.217 0 0 1 0 .412l-1.162.387a1.73 1.73 0 0 0-1.097 1.097l-.387 1.162a.217.217 0 0 1-.412 0l-.387-1.162A1.73 1.73 0 0 0 9.31 6.593l-1.162-.387a.217.217 0 0 1 0-.412l1.162-.387a1.73 1.73 0 0 0 1.097-1.097zM13.75.009a.149.149 0 0 1 .306 0l.258.774c.115.346.386.617.732.732l.774.258a.149.149 0 0 1 0 .306l-.774.258a1.16 1.16 0 0 0-.732.732l-.258.774a.149.149 0 0 1-.306 0l-.258-.774a1.16 1.16 0 0 0-.732-.732l-.774-.258a.149.149 0 0 1 0-.306l.774-.258a1.16 1.16 0 0 0 .732-.732z" />
+                        </svg>
+                        <span class="ms-1 d-none d-md-inline">Dark Mode</span>
+                    </button>
+                    <form class="d-flex" role="search">
+                        <button class="btn btn-outline-success mx-2" type="submit">Login</button>
+                        <button class="btn btn-outline-success mx-2" type="submit">Sign-up</button>
+                    </form>
+                </div>
             </div>
         </div>
     </nav>
@@ -58,7 +183,6 @@
                 <input class="form-control" type="file" name="file" id="formFile">
             </div>
 
-            <!-- Dropdown for Format Conversions -->
             <div class="form-floating mb-3">
                 <select name="format_conversion" class="form-select" id="formatConversionSelect"
                     aria-label="Format Conversion Select">
@@ -71,7 +195,6 @@
                 <label for="formatConversionSelect">Select Format Conversion</label>
             </div>
 
-            <!-- Dropdown for Image Processing -->
             <div class="form-floating mb-3">
                 <select name="image_processing" class="form-select" id="imageProcessingSelect"
                     aria-label="Image Processing Select">
@@ -93,6 +216,43 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            const body = document.body;
+            const moonIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-moon-stars-fill" viewBox="0 0 16 16"><path d="M6 .278a.77.77 0 0 1 .08.858 7.2 7.2 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277q.792-.001 1.533-.16a.79.79 0 0 1 .81.316.73.73 0 0 1-.031.893A8.35 8.35 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.75.75 0 0 1 6 .278"/><path d="M10.794 3.148a.217.217 0 0 1 .412 0l.387 1.162c.173.518.579.924 1.097 1.097l1.162.387a.217.217 0 0 1 0 .412l-1.162.387a1.73 1.73 0 0 0-1.097 1.097l-.387 1.162a.217.217 0 0 1-.412 0l-.387-1.162A1.73 1.73 0 0 0 9.31 6.593l-1.162-.387a.217.217 0 0 1 0-.412l1.162-.387a1.73 1.73 0 0 0 1.097-1.097zM13.75.009a.149.149 0 0 1 .306 0l.258.774c.115.346.386.617.732.732l.774.258a.149.149 0 0 1 0 .306l-.774.258a1.16 1.16 0 0 0-.732.732l-.258.774a.149.149 0 0 1-.306 0l-.258-.774a1.16 1.16 0 0 0-.732-.732l-.774-.258a.149.149 0 0 1 0-.306l.774-.258a1.16 1.16 0 0 0 .732-.732z"/></svg>`;
+            const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-brightness-high-fill" viewBox="0 0 16 16"><path d="M12 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0M8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0m0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13m8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5M3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8m10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0m-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0m9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707M4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707"/></svg>`;
+            const darkModeToggleText = darkModeToggle.querySelector('span');
+
+
+            // Function to apply the theme
+            function applyTheme(isDark) {
+                if (isDark) {
+                    body.classList.add('dark-mode');
+                    darkModeToggle.innerHTML = sunIcon + (darkModeToggleText ? `<span class="ms-1 d-none d-md-inline">Light Mode</span>` : '');
+                    localStorage.setItem('darkMode', 'enabled');
+                } else {
+                    body.classList.remove('dark-mode');
+                    darkModeToggle.innerHTML = moonIcon + (darkModeToggleText ? `<span class="ms-1 d-none d-md-inline">Dark Mode</span>` : '');
+                    localStorage.setItem('darkMode', 'disabled');
+                }
+            }
+
+            // Check local storage for saved preference
+            const currentMode = localStorage.getItem('darkMode');
+            if (currentMode === 'enabled') {
+                applyTheme(true);
+            } else {
+                applyTheme(false); // Default to light
+            }
+
+            darkModeToggle.addEventListener('click', () => {
+                const isDarkMode = body.classList.contains('dark-mode');
+                applyTheme(!isDarkMode);
+            });
+        });
+    </script>
 </body>
 
 </html>
