@@ -9,18 +9,26 @@
         integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
 </head>
 
-<body style="background-color: #f7f7f7; color: #333;">
+<body style="background-color: #f8f9fa; color: #333;">
     <div class="container my-5 text-center">
-        <h1 style="color: #dc3545;">Error!</h1>
-        <p>We encountered an issue processing your request. Possible reasons include:</p>
-        <ul style="list-style-type: none; padding-left: 0;">
-            <li>❌ You might not have uploaded any image.</li>
-            <li>❌ The file format is not supported.</li>
-            <li>❌ The file might be too large.</li>
-            <li>❌ The image could be corrupted.</li>
-        </ul>
-        <p>Click below to return to the home page:</p>
-        <a href="/" class="btn btn-primary">Return to Home Page</a>
+        <h1 class="text-danger display-4">⚠️ Error Occurred</h1>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert alert-warning mt-4" role="alert">
+                    <ul class="list-unstyled mb-0">
+                        {% for message in messages %}
+                            <li>❌ {{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% else %}
+                <p class="mt-4">We encountered an issue processing your request. Please try again.</p>
+            {% endif %}
+        {% endwith %}
+
+        <p class="mt-4">Click below to return to the home page:</p>
+        <a href="{{ url_for('home') }}" class="btn btn-primary">Return to Home</a>
     </div>
 </body>
 

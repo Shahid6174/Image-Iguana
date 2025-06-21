@@ -3,17 +3,35 @@ from werkzeug.utils import secure_filename
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime, timedelta
+from PIL import Image
+from werkzeug.exceptions import RequestEntityTooLarge  # ✅ Correct
 import cv2
 import os
 import numpy as np
 from flask_wtf.csrf import CSRFProtect
+from dotenv import load_dotenv
+import hashlib
 
 app = Flask(__name__)
 csrf = CSRFProtect(app)
-app.secret_key = "your-secret-key-here"  # Change this to a secure secret key
+load_dotenv()
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-default-secret')  # Change this to a secure secret key
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2MB limit
+@app.errorhandler(RequestEntityTooLarge)
+def handle_file_too_large(e):
+    flash("File size exceeds the 2MB limit.")
+    return render_template("error.html"), 413
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SECURE=True,  # Set to False during local dev without HTTPS
+    SESSION_COOKIE_SAMESITE='Lax'
+)
+
 
 db = SQLAlchemy(app)
 login_manager = LoginManager()
@@ -31,11 +49,19 @@ class User(UserMixin, db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+    
+class ImageMeta(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255))
+    upload_time = db.Column(db.DateTime, default=datetime.utcnow)
+    is_deleted = db.Column(db.Boolean, default=False)
+    user_id = db.Column(db.Integer)
+    is_blurry = db.Column(db.Boolean, default=False)
+    last_accessed = db.Column(db.DateTime, default=datetime.utcnow)
 
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
-
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -45,66 +71,43 @@ UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'webp', 'png', 'jpg', 'jpeg', 'gif'}
 
 def processImage(filename, format_conversion=None, image_processing=None):
-    print(f"Format Conversion: {format_conversion}, Image Processing: {image_processing}, Filename: {filename}")
-    img = cv2.imread(f"uploads/{filename}")
+    img_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    img = cv2.imread(img_path)
+    if img is None:
+        return None
 
-    # Handle format conversions
-    if format_conversion:
-        match format_conversion:
-            case "cwebp":
-                newFilename = f"static/{filename.split('.')[0]}.webp"
-                cv2.imwrite(newFilename, img)
-                return newFilename
-            case "cpng":
-                newFilename = f"static/{filename.split('.')[0]}.png"
-                cv2.imwrite(newFilename, img)
-                return newFilename
-            case "cjpg":
-                newFilename = f"static/{filename.split('.')[0]}.jpg"
-                cv2.imwrite(newFilename, img)
-                return newFilename
-            case "cjpeg":
-                newFilename = f"static/{filename.split('.')[0]}.jpeg"
-                cv2.imwrite(newFilename, img)
-                return newFilename
+    # Optional: handle format conversion here if needed
 
-    # Handle image processing
     if image_processing:
         match image_processing:
             case "cgray":
                 imgProcessed = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                 newFilename = f"static/{filename}"
-                cv2.imwrite(newFilename, imgProcessed)
-                return newFilename
             case "histeq":
                 imgGray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                 imgProcessed = cv2.equalizeHist(imgGray)
                 newFilename = f"static/{filename.split('.')[0]}_histeq.png"
-                cv2.imwrite(newFilename, imgProcessed)
-                return newFilename
             case "blur":
                 imgProcessed = cv2.GaussianBlur(img, (5, 5), 0)
                 newFilename = f"static/{filename.split('.')[0]}_blurred.png"
-                cv2.imwrite(newFilename, imgProcessed)
-                return newFilename
             case "canny":
                 imgProcessed = cv2.Canny(img, 100, 200)
                 newFilename = f"static/{filename.split('.')[0]}_edges.png"
-                cv2.imwrite(newFilename, imgProcessed)
-                return newFilename
             case "rotate":
                 imgProcessed = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
                 newFilename = f"static/{filename.split('.')[0]}_rotated.png"
-                cv2.imwrite(newFilename, imgProcessed)
-                return newFilename
             case "sharpen":
                 kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
                 imgProcessed = cv2.filter2D(img, -1, kernel)
                 newFilename = f"static/{filename.split('.')[0]}_sharpened.png"
-                cv2.imwrite(newFilename, imgProcessed)
-                return newFilename
+            case _:
+                return img_path  # If unknown processing, just return original
 
-    return None
+        cv2.imwrite(newFilename, imgProcessed)
+        return newFilename
+
+    # If no processing requested, just return original path
+    return img_path
 
 @app.route("/")
 def home():
@@ -118,7 +121,7 @@ def login():
         return redirect(url_for('home'))
     
     if request.method == 'POST':
-        username = request.form.get('username')
+        username = request.form.get('username', '').strip()
         password = request.form.get('password')
         user = User.query.filter_by(username=username).first()
         
@@ -139,6 +142,8 @@ def signup():
         username = request.form.get('username')
         email = request.form.get('email')
         password = request.form.get('password')
+        username = username.strip()
+        email = email.strip()
         
         if User.query.filter_by(username=username).first():
             flash('Username already exists')
@@ -169,6 +174,13 @@ def logout():
 def about():
     return render_template("about.html", title="About")
 
+def is_valid_image(file_stream):
+    file_bytes = np.asarray(bytearray(file_stream.read()), dtype=np.uint8)
+    img = cv2.imdecode(file_bytes, cv2.IMREAD_UNCHANGED)
+    file_stream.seek(0)  # rewind after reading
+    return img is not None
+
+
 @app.route("/edit", methods=["GET", "POST"])
 @login_required
 def edit():
@@ -187,14 +199,25 @@ def edit():
             flash('No selected file')
             return render_template("error.html")
         elif file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            if not is_valid_image(file.stream):
+               flash('Uploaded file is not a valid image.')
+               return render_template("error.html")    
+            file_contents = file.read()
+            md5_hash = hashlib.md5(file_contents).hexdigest()
+            ext = os.path.splitext(file.filename)[1]  # preserve original extension
+            filename = f"{md5_hash}{ext}"
+
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+            # Save only if not already saved
+            if not os.path.exists(file_path):
+                file.seek(0)  # rewind to start after read
+                file.save(file_path)
+
             processed_file = processImage(filename, format_conversion, image_processing)
-            
+
             if processed_file:
-                # Get the filename from the processed file path
                 download_filename = os.path.basename(processed_file)
-                # Send the file for download
                 return send_file(
                     processed_file,
                     as_attachment=True,
@@ -207,7 +230,7 @@ def edit():
         else:
             flash('File type not allowed. Please upload an image file.')
             return render_template("error.html")
-            
+
     return render_template("index.html")
 
 @app.route("/usage")
